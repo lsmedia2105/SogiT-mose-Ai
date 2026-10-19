@@ -29,7 +29,7 @@ const browser:StudioAPI={
   saveProject:save,
   async importAssets(){if(!current)throw new Error('Chưa có dự án.');const files=await pickFiles('image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime,audio/*',true);const assets:Asset[]=[];for(const f of files){if(f.size>250*1024*1024)throw new Error('Bản xem trước giới hạn mỗi file 250 MB. Dùng desktop cho video lớn.');const id=crypto.randomUUID();await dbPut('media',f,id);const url=URL.createObjectURL(f);urls.set(id,url);assets.push({id,name:f.name,path:`assets/${id}`,type:f.type.startsWith('image/')?'image':f.type.startsWith('video/')?'video':'audio',createdAt:new Date().toISOString(),url});}return assets;},
   async saveSettings(s){if(s.apiKey)throw new Error('Chỉ lưu API key trong kho mã hóa của bản desktop.');const {apiKey,clearApiKey,...clean}=s;await dbPut('settings',clean,'config');return clean;},
-  pickTool:nativeOnly,openMuse:nativeOnly,
+  pickTool:nativeOnly,openMuse:nativeOnly,museCheck:nativeOnly,museReport:nativeOnly,museStart:nativeOnly,museHistory:async()=>[],onMuse:()=>()=>{},
   async addAccount(name){const accounts:Account[]=await dbGet('settings','accounts')||[];accounts.push({id:crypto.randomUUID(),name,createdAt:new Date().toISOString()});await dbPut('settings',accounts,'accounts');return accounts;},
   async removeAccount(id){const accounts:Account[]=(await dbGet('settings','accounts')||[]).filter((a:Account)=>a.id!==id);await dbPut('settings',accounts,'accounts');return accounts;},
   generateText:nativeOnly,

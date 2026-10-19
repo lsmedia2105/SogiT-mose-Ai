@@ -1,13 +1,15 @@
-Ứng dụng desktop tiếng Việt cho phim storytelling có lời dẫn và hội thoại.
+Bản 0.2.0 bổ sung **tạo ảnh trực tiếp từ từng shot và hàng đợi Muse**.
 
-**Tải file `SogiT Studio-0.1.0-win.zip` trong Assets**, giải nén toàn bộ và chạy `SogiT Studio.exe`. Windows 10/11 x64. Không cần Node.js. Đọc `HUONG_DAN.txt` trong gói hoặc README của repository.
+Tải `SogiT Studio-0.2.0-win.zip` trong Assets, giải nén toàn bộ và chạy `SogiT Studio.exe`. Thoát bản cũ trước khi mở bản mới. Dự án cũ dùng lại được qua `project.sogit.json`.
 
-Bao gồm quản lý dự án trên ổ đĩa, reference, kịch bản/phân cảnh, prompt, phiên tài khoản Muse riêng, nhập/duyệt video và ghép/xuất MP4 bằng FFmpeg.
+- Nhập CẢNH/SCENE/SHOT, mốc thời gian, TXT/MD; tách ghi chú MASTER VISUAL LOCK; duyệt trước khi thêm hoặc thay danh sách shot.
+- Muse chia shot qua phiên đăng nhập. Tạo ảnh từng shot/hàng loạt; tạo reference; gắn ảnh tham chiếu và tự lưu kết quả về dự án khi giao diện tương thích.
+- Tạo video từng shot từ prompt/storyboard; MP4/WebM trực tiếp mới hỗ trợ tải tự động, blob/HLS cần tải thủ công.
+- Nhật ký lưu trên ổ, một tác vụ mỗi lần, không tự gửi lại khi chưa rõ kết quả. Dừng chờ trong tool không hủy xử lý bên Muse.
+- Có Báo cáo kết nối để chẩn đoán bộ nhận diện; không lấy nội dung chat, cookie, mật khẩu hoặc token.
 
-- Cài FFmpeg và FFprobe riêng, chọn đường dẫn trong Cài đặt để xuất phim.
-- Muse vẫn cần thao tác trực tiếp; chưa xác minh API tự động tạo video hoặc đọc token.
-- Chưa có TTS hoặc lip-sync tự động. Không xóa watermark có sẵn ở nguồn.
-- AI upscale Real-ESRGAN cần executable, models và GPU tương thích; chưa kiểm thử GPU thực.
-- Gói chưa ký số. Build Windows không thay thế kiểm thử đăng nhập Muse và sử dụng trên máy Windows thực.
+**Tự động hóa Muse đang thử nghiệm:** đã test bằng trang giả lập trong Electron, chưa kiểm chứng phiên Muse thật của người dùng. Nếu Muse đổi DOM/model, có thể cần cập nhật bộ nhận diện. Thử một shot trước. Không hứa mọi tài khoản/model hoạt động ngay.
 
-Mã nguồn nằm trong repository và các liên kết Source code phía dưới. Có file SHA256SUMS.txt để kiểm tra gói tải xuống.
+Windows 10/11 x64; gói chưa ký số. Không cần Node.js. FFmpeg/FFprobe cần cài riêng để ghép/xuất phim. Chưa có TTS/lip-sync tự động; không xóa watermark nguồn. AI upscale Real-ESRGAN cần GPU/models riêng, chưa kiểm thử GPU thực.
+
+Xem README trong repository để dùng chi tiết. SHA256SUMS.txt dùng kiểm tra file tải xuống.

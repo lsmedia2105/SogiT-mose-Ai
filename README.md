@@ -1,22 +1,57 @@
 # SogiT Studio
 
-Ứng dụng desktop Windows cho phim storytelling có lời dẫn và hội thoại. Giao diện tiếng Việt, dự án nằm trên ổ đĩa, tham chiếu được gán theo cảnh. Bản đầu **v0.1.0**.
+Ứng dụng desktop Windows cho phim storytelling có lời dẫn và hội thoại. Giao diện tiếng Việt, dự án nằm trên ổ đĩa, tham chiếu được gán theo cảnh. Bản đầu **v0.2.0**.
 
 ## Dùng trên Windows
 
-Tải gói Windows tại **[GitHub Releases](https://github.com/lsmedia2105/SogiT-mose-Ai/releases/latest)**. Chọn `SogiT Studio-0.1.0-win.zip` trong **Assets**. Nếu bản Release chưa xuất hiện, xem tiến độ ở **[Actions](https://github.com/lsmedia2105/SogiT-mose-Ai/actions/workflows/windows-release.yml)**. Workflow chạy khi đẩy tag `v*`, kiểm thử core trên Linux rồi build Windows và đăng ZIP lên Release; có thể chạy lại thủ công theo tag.
+Tải gói Windows tại **[GitHub Releases](https://github.com/lsmedia2105/SogiT-mose-Ai/releases/latest)**. Chọn `SogiT Studio-0.2.0-win.zip` trong **Assets**. Nếu bản Release chưa xuất hiện, xem tiến độ ở **[Actions](https://github.com/lsmedia2105/SogiT-mose-Ai/actions/workflows/windows-release.yml)**. Workflow chạy khi đẩy tag `v*`, kiểm thử core trên Linux rồi build Windows và đăng ZIP lên Release; có thể chạy lại thủ công theo tag.
 
-Gói thử nghiệm: `release/SogiT Studio-0.1.0-win.zip`. Giải nén **toàn bộ** rồi chạy `SogiT Studio.exe`; không chạy executable bên trong ZIP. Không cần Node.js để dùng gói này. Windows 10/11 64-bit; không bắt buộc NVIDIA cho quản lý dự án và thao tác cloud. Gói chưa ký số và chưa được thử trên máy Windows thực.
+Gói thử nghiệm: `release/SogiT Studio-0.2.0-win.zip`. Giải nén **toàn bộ** rồi chạy `SogiT Studio.exe`; không chạy executable bên trong ZIP. Không cần Node.js để dùng gói này. Windows 10/11 64-bit; không bắt buộc NVIDIA cho quản lý dự án và thao tác cloud. Gói chưa ký số và chưa được thử trên máy Windows thực.
 
 1. Tạo dự án, chọn thư mục lưu trên ổ có đủ dung lượng.
-2. Vào **Kịch bản & thế giới**, nhập kịch bản, tỷ lệ, phong cách và hồ sơ phim. Bấm **Tách & thêm cảnh** để tách văn bản theo `CẢNH n`, `SCENE n` hoặc đoạn cách dòng.
+2. Vào **Kịch bản & thế giới**, dán kịch bản hoặc nhập TXT/MD. Bấm **Tách & duyệt shot**: nhận diện `CẢNH n`, `SCENE n`, `SHOT n`, mốc thời gian; tách MASTER VISUAL LOCK thành ghi chú chung. Cảnh dài có thể chia theo thời lượng, cần duyệt lại hành động. Chọn thêm shot hoặc thay danh sách cũ; file media được giữ. Muốn AI chia shot, chọn tài khoản và bấm **Muse chia shot**; kết quả cũng phải duyệt trước khi thêm.
 3. Vào **Kho reference**, thêm hồ sơ nhân vật/bối cảnh, nhập ảnh đã duyệt và khóa hồ sơ nếu muốn.
 4. Trong **Studio phân cảnh**, mở cảnh để chọn reference, chỉnh góc máy, lời dẫn, hội thoại và thời lượng. Bấm **Ghép từ hồ sơ** để tạo prompt theo mẫu, hoặc tự sửa prompt.
 5. Thêm tên tài khoản trong **Tài khoản AI**, mở cửa sổ Muse và tự đăng nhập. Mỗi tài khoản có phiên riêng.
-6. Chọn tài khoản ở cảnh, bấm **Mở Muse & copy prompt**, dán prompt và đính kèm ảnh reference trong Muse. Tải kết quả về, nhập vào cảnh, xem và chọn **Duyệt & dùng bản này**.
+6. Chọn tài khoản ở thanh **Sản xuất trực tiếp qua Muse**, bấm **Kiểm tra Muse**. Sau đó bấm **Tạo ảnh shot** trên từng card hoặc **Tạo ảnh N shot** để chạy tuần tự. Trong chi tiết shot có **Tạo ảnh trên Muse**, **Tạo video Muse** và các phiên bản ảnh/video. Reference đã chọn được đính kèm qua ô tải file khi nhận diện được. Kết quả tải thành công được sao chép vào dự án; chọn bản video và bấm **Duyệt & dùng bản này**. Nút copy/mở Muse thủ công vẫn có để dùng khi tự động hóa chưa tương thích.
 7. Nhập file lời dẫn/hội thoại/nhạc qua **Thư viện media**, gán vào cảnh và xuất tại **Hậu kỳ & xuất phim**.
 
-Không được giả định token Muse tương đương số ảnh/video hoặc dùng được ở API khác. Chưa có API Muse được xác minh: đăng nhập, gửi yêu cầu, gắn reference và tải kết quả vẫn do người dùng thao tác. Studio không tự đọc số dư token, tự tạo video hàng loạt hoặc loại bỏ watermark từ nguồn.
+Không được giả định token Muse tương đương số ảnh/video hoặc dùng được ở API khác. Chưa có API Muse được xác minh. Bản 0.2.0 bổ sung tự động hóa giao diện chat: gửi yêu cầu, đính kèm reference, chờ và tải kết quả khi nhận diện được DOM và file media. Đây là tích hợp thử nghiệm; chưa xác minh với phiên Muse thật của người dùng. Không đọc số dư token, không vượt giới hạn và không loại bỏ watermark.
+
+
+## Tạo trực tiếp trên Muse — đọc trước lần đầu
+
+1. Thoát bản cũ trước khi mở bản cập nhật. Đừng xóa thư mục dữ liệu ứng dụng nếu muốn giữ phiên đăng nhập. Mở dự án cũ bằng file `project.sogit.json`.
+2. Trong **Tài khoản AI**, mở/đăng nhập Muse, vào chat có ô Message trống. Bấm **Kiểm tra**. Không đăng nhập lại nếu phiên đã còn hiệu lực.
+3. Thử **một shot** trước khi chạy cả danh sách. Bấm tạo dùng hạn mức tài khoản và gửi mô tả/ref của shot lên Muse. Không thao tác ô chat trong lúc tool đang chạy.
+4. Ảnh kết quả xuất hiện trên card và mục **Ảnh storyboard**. Tạo lại giữ bản cũ; bấm một ảnh để chọn bản dùng cho shot. **Tạo video Muse** đính kèm cả ảnh storyboard đã chọn và reference.
+5. Trong kho reference, mở hồ sơ chưa khóa rồi bấm **Lưu & tạo ảnh reference trên Muse**. Khi có ảnh mới, chọn ảnh đại diện đã duyệt và lưu.
+6. Nếu báo không tìm thấy ô chat/vùng trả lời, về **Tài khoản AI → Báo cáo kết nối**. JSON chỉ chứa cấu trúc bộ nhận diện (tag/class/role), không lấy nội dung chat, cookie, mật khẩu hoặc token. Có thể gửi file này để cập nhật bộ nhận diện. Cài đặt có CSS selector nâng cao nhưng không cần tự đoán.
+
+Tích hợp chỉ tự động thao tác UI, không có endpoint Muse nội bộ được đoán hoặc gọi. Model và chế độ tạo ảnh/video phải được tài khoản Muse hỗ trợ. Nếu Muse hỏi lại bằng chữ, không trả media hoặc dùng UI khác, tác vụ có thể dừng và cần kiểm tra trực tiếp.
+
+**An toàn hàng đợi:** mỗi tác vụ gửi một lần, xử lý tuần tự, dừng ở lỗi đầu tiên. Không tự đổi tài khoản để vượt quota, không tự gửi lại sau timeout. **Dừng chờ / hàng đợi không hủy tác vụ bên Muse**. Nếu trạng thái “chưa rõ kết quả” hoặc “bị gián đoạn”, xem Muse trước khi bấm tạo lại. Shot chưa rõ kết quả bị loại khỏi lượt hàng loạt mặc định. Nhật ký nằm tại `.sogit/muse-history.json` trong dự án. Trạng thái chưa hoàn tất khi mở lại được đánh dấu gián đoạn, không tự chạy lại.
+
+Tải tự động hỗ trợ PNG/JPEG/WebP, MP4/WebM trực tiếp; video blob/HLS chưa hỗ trợ, tải thủ công rồi nhập vào cảnh. Giới hạn 40 MB/ảnh, 500 MB/video. Tải thất bại không được báo là đã tạo thành công.
+
+Ví dụ kịch bản có sẵn shot:
+
+```text
+MASTER VISUAL LOCK
+Điện ảnh hiện thực, làng biển Việt Nam, Linh luôn mặc áo khoác xanh.
+
+CẢNH 1 — Trở về
+SHOT 1 | 00:00–00:08
+MÔ TẢ: Linh đứng trước ngôi nhà cũ bên biển.
+CỠ CẢNH: Toàn cảnh
+MÁY QUAY: Tiến chậm
+LỜI DẪN: Mười năm sau, cô trở về.
+IMAGE PROMPT: Cinematic wide shot of Linh outside a weathered seaside home.
+
+SHOT 2 | 00:08–00:16
+MÔ TẢ: Cận tay Linh mở lá thư trên bàn gỗ.
+HỘI THOẠI: Linh: Cha vẫn chờ con sao?
+```
 
 ## Công cụ hậu kỳ
 
@@ -83,9 +118,10 @@ Các file đóng gói nằm trong `release/` (gitignored). Build NSIS trên Wind
 ## Tình trạng xác minh
 
 - TypeScript + Vite production build: đạt.
-- 15 kiểm thử domain, lưu/mở dự án, đường dẫn, API compatible mock và FFmpeg thực: đạt.
+- 23 kiểm thử domain, lưu/mở dự án, đường dẫn, API compatible mock và FFmpeg thực: đạt.
 - Kiểm thử UI Chromium: tạo dự án, nhập kịch bản, gán/khóa reference, tạo prompt, lưu/mở lại cả ảnh, thêm tên tài khoản và xuất SRT: đạt.
 - Desktop Electron trên Linux, giao diện build từ file, IPC, media protocol, phiên tài khoản tách biệt với trang giả lập và xuất FFmpeg: đạt.
+- Tự động hóa Muse trên trang giả lập qua Electron: kiểm tra bản nháp, gắn file reference, click gửi, lấy ảnh/video mới, bảo vệ kết quả trước autosave cũ, nhận kịch bản, dừng hàng đợi không gửi lại: đạt.
 - Các phần chạy Windows executable trên máy Windows, đăng nhập và tác vụ Muse thực, dịch vụ AI thật, GPU Real-ESRGAN: cần xác minh riêng; không suy ra từ các test trên.
 
 Xem [docs/REQUIREMENTS.md](docs/REQUIREMENTS.md) về phạm vi hiện tại và các bước phát triển tiếp.

@@ -12,7 +12,8 @@ try{
   await page.getByRole('button',{name:'Tạo dự án',exact:true}).click();
   await page.getByRole('button',{name:'Nhập kịch bản',exact:true}).click();
   await page.getByRole('button',{name:'Dùng ví dụ',exact:true}).click();
-  await page.getByRole('button',{name:'Tách & thêm cảnh'}).click();
+  await page.getByRole('button',{name:'Tách & duyệt shot'}).click();
+  await page.getByRole('dialog',{name:'Duyệt danh sách shot'}).getByRole('button',{name:/Thêm 3 shot/}).click();
   await page.getByRole('button',{name:'Chỉnh sửa CẢNH 1 — Bức thư cuối cùng'}).click();
   const inspector=page.getByRole('dialog',{name:'Chi tiết phân cảnh'});
   await inspector.getByLabel('Lời người dẫn chuyện').fill('Có những lá thư chỉ tìm được người nhận sau nhiều năm.');
@@ -58,6 +59,21 @@ try{
   await page.getByRole('button',{name:'Kho reference',exact:true}).click();
   await page.getByRole('img',{name:'Linh',exact:true}).waitFor();
   assert.equal(await page.getByRole('img',{name:'Linh',exact:true}).evaluate(img=>img.complete&&img.naturalWidth>0),true);
+  await page.getByRole('button',{name:'Kịch bản & thế giới',exact:true}).click();
+  await page.getByRole('textbox',{name:'Kịch bản',exact:true}).fill('MASTER VISUAL LOCK\nGothic medieval, blue coats.\n\nCẢNH 001–015 | 00:00–02:00\nSHOT 1 | 00:00–00:08\nLinh approaches a castle.\nSHOT 2 | 00:08–00:16\nShe opens the door.');
+  await page.getByRole('button',{name:'Tách & duyệt shot'}).click();
+  const preview=page.getByRole('dialog',{name:'Duyệt danh sách shot'});
+  assert.equal(await preview.locator('.shot-preview-list article').count(),2);
+  await preview.getByRole('combobox').selectOption('replace');
+  await preview.getByRole('button',{name:/Thay bằng 2 shot/}).click();
+  assert.equal(await page.locator('.scene-card').count(),2);
+  await page.getByRole('button',{name:'Tạo ảnh shot',exact:true}).first().click();
+  await page.getByRole('status').filter({hasText:'Chức năng này cần ứng dụng desktop Windows'}).waitFor();
+  await page.getByRole('button',{name:'Đóng thông báo',exact:true}).click();
+  await page.getByRole('checkbox',{name:'Đánh dấu SHOT 1 | 00:00–00:08'}).check();
+  await page.getByRole('combobox',{name:'Phạm vi tạo ảnh'}).selectOption('checked');
+  await page.getByRole('button',{name:'Tạo ảnh 1 shot',exact:true}).waitFor();
+  await page.screenshot({path:'test-results/studio.png',fullPage:true});
   assert.deepEqual(errors,[]);
-  console.log('PASS: create project, split story, scene edits, reference upload/lock/assignment, prompt continuity, account metadata, SRT download, save/reload including media.');
+  console.log('PASS: create project, split story, scene edits, reference upload/lock/assignment, prompt continuity, account metadata, SRT download, save/reload including media, MASTER VISUAL LOCK/shot preview and replacement, batch selection and native-only generation gating.');
 }finally{await browser.close();}

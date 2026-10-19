@@ -1,11 +1,14 @@
-import { app, BrowserWindow, ipcMain, dialog, shell, protocol, net, safeStorage, clipboard, session } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog, shell, protocol, net, safeStorage, clipboard, session, nativeImage } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { atomicJSON, importAsset, loadProject, saveProject, realChild } from './store.mjs';
-import { createProject, validateProject, recommendProfile } from '../shared/domain.mjs';
+import { createProject, validateProject, recommendProfile, buildImagePrompt, buildPrompt, buildShotlistPrompt } from '../shared/domain.mjs';
+import { applyGeneratedResults } from '../shared/generation.mjs';
+import { generateMuse, inspectMuse, diagnoseMuse, downloadMuseMedia } from './muse.mjs';
+import { runQueue, taskRecord, interruptedHistory } from './muse-queue.mjs';
 import { runProcess, renderTimeline, upscaleVideo, toSrt } from './media.mjs';
 import { chatCompletion, validateEndpoint } from './provider.mjs';
 
@@ -14,8 +17,9 @@ const useBuiltUI=app.isPackaged||process.argv.includes('--studio-built-ui');
 protocol.registerSchemesAsPrivileged([{scheme:'sogit-media',privileges:{standard:true,secure:true,supportFetchAPI:true,stream:true}}]);
 let window, currentRoot='', currentId='', settings={}, accounts=[], recent=[], job=null, writes=Promise.resolve();
 const museWindows=new Map();
+let museRun=null,generated={projectId:'',entries:[]};
 const memoryGB=Math.round(os.totalmem()/1024**3);
-const defaults={profile:recommendProfile(memoryGB),ffmpegPath:'',ffprobePath:'',realesrganPath:'',realesrganModelDir:'',baseUrl:'https://api.openai.com/v1',textModel:'',encryptedKey:''};
+const defaults={profile:recommendProfile(memoryGB),ffmpegPath:'',ffprobePath:'',realesrganPath:'',realesrganModelDir:'',baseUrl:'https://api.openai.com/v1',textModel:'',encryptedKey:'',museComposer:'',museSend:'',museResult:'',museFile:'',museTimeout:10};
 const configFile=()=>path.join(app.getPath('userData'),'studio-settings.json');
 function publicSettings(){ const {encryptedKey,...value}=settings; return {...value,hasApiKey:!!encryptedKey}; }
 async function persist(){ await atomicJSON(configFile(),{settings,accounts,recent}); }
@@ -23,15 +27,16 @@ function mediaURL(asset){return `sogit-media://project/${encodeURIComponent(asse
 function enrich(project){return {...project,assets:project.assets.map(a=>({...a,url:mediaURL(a)}))};}
 function clean(project){const p=structuredClone(project);for(const a of p.assets)delete a.url;return p;}
 function requireProject(p){validateProject(p);if(!currentRoot||p.id!==currentId)throw new Error('Hãy mở đúng dự án trước.');return clean(p);}
-function queueSave(p,root=currentRoot){writes=writes.catch(()=>{}).then(()=>saveProject(root,p));return writes;}
-async function setProject(root,p){await writes;currentRoot=root;currentId=p.id;recent=[{name:p.name,path:root},...recent.filter(x=>x.path!==root)].slice(0,10);await persist();return {project:enrich(p),root};}
+function mergeResults(p){return generated.projectId===p.id?applyGeneratedResults(p,generated.entries):p;}
+function queueSave(p,root=currentRoot){writes=writes.catch(()=>{}).then(()=>saveProject(root,mergeResults(p)));return writes;}
+async function setProject(root,p){await writes;currentRoot=root;currentId=p.id;generated={projectId:p.id,entries:[]};recent=[{name:p.name,path:root},...recent.filter(x=>x.path!==root)].slice(0,10);await persist();return {project:enrich(p),root};}
 function getKey(){if(!settings.encryptedKey)return '';if(!safeStorage.isEncryptionAvailable())throw new Error('Kho mã hóa hệ điều hành không sẵn sàng.');return safeStorage.decryptString(Buffer.from(settings.encryptedKey,'base64'));}
 function notify(value){window?.webContents.send('studio:job',value);}
 function register(name,fn){ipcMain.handle(`studio:${name}`,async(event,...args)=>{if(event.sender!==window.webContents||event.senderFrame!==window.webContents.mainFrame)throw new Error('Nguồn yêu cầu không hợp lệ.');return fn(...args);});}
 async function toolVersion(exe){try{let output='';await runProcess(exe,['-version'],{onLine:s=>output+=s,signal:AbortSignal.timeout(8000)});return output.split('\n')[0].slice(0,180);}catch{return null;}}
-function assertIdle(){if(job)throw new Error('Có tác vụ đang chạy. Hãy chờ hoặc hủy trước khi đổi dự án.');}
+function assertIdle(){if(job||museRun)throw new Error('Có tác vụ đang chạy. Hãy chờ hoặc dừng trước khi đổi dự án.');}
 async function runJob(kind,p,options){
-  if(job)throw new Error('Hậu kỳ chạy lần lượt để giới hạn RAM và tránh trùng tác vụ.');
+  if(job||museRun)throw new Error('Có tác vụ đang chạy. Hãy chờ hoặc dừng trước khi xuất.');
   const project=requireProject(p),root=currentRoot;
   const controller=new AbortController(),id=randomUUID();job={id,controller};
   try{
@@ -100,8 +105,9 @@ register('saveProject',async p=>{const project=requireProject(p);await queueSave
 register('importAssets',async()=>{if(!currentRoot)throw new Error('Chưa mở dự án.');const chosen=await dialog.showOpenDialog(window,{title:'Nhập ảnh, video hoặc âm thanh',properties:['openFile','multiSelections'],filters:[{name:'Media',extensions:['png','jpg','jpeg','webp','mp4','mov','mkv','webm','wav','mp3','m4a','ogg']}]});if(chosen.canceled)return [];const assets=[];for(const source of chosen.filePaths)assets.push(await importAsset(currentRoot,source));return assets.map(a=>({...a,url:mediaURL(a)}));});
 register('saveSettings',async value=>{
   const next={...settings};
-  for(const key of ['ffmpegPath','ffprobePath','realesrganPath','realesrganModelDir','textModel'])if(typeof value[key]==='string')next[key]=value[key].trim();
+  for(const key of ['ffmpegPath','ffprobePath','realesrganPath','realesrganModelDir','textModel','museComposer','museSend','museResult','museFile'])if(typeof value[key]==='string')next[key]=value[key].trim();
   if(['eco','balanced','quality'].includes(value.profile))next.profile=value.profile;
+  if(Number.isFinite(value.museTimeout))next.museTimeout=Math.max(1,Math.min(30,value.museTimeout));
   if(value.baseUrl)next.baseUrl=validateEndpoint(value.baseUrl);
   if(value.clearApiKey)next.encryptedKey='';
   else if(value.apiKey){if(!safeStorage.isEncryptionAvailable()||safeStorage.getSelectedStorageBackend?.()==='basic_text')throw new Error('Không có kho mã hóa an toàn trên hệ điều hành này. Không lưu API key.');next.encryptedKey=safeStorage.encryptString(value.apiKey).toString('base64');}
@@ -109,19 +115,82 @@ register('saveSettings',async value=>{
 });
 register('pickTool',async kind=>{if(!['ffmpegPath','ffprobePath','realesrganPath','realesrganModelDir'].includes(kind))throw new Error('Công cụ không hợp lệ.');const result=await dialog.showOpenDialog(window,{properties:[kind==='realesrganModelDir'?'openDirectory':'openFile']});return result.canceled?null:result.filePaths[0];});
 register('addAccount',async name=>{const trimmed=String(name||'').trim();if(!trimmed)throw new Error('Hãy nhập tên tài khoản.');const account={id:randomUUID(),name:trimmed.slice(0,80),createdAt:new Date().toISOString()};accounts.push(account);await persist();return accounts;});
-register('removeAccount',async id=>{const account=accounts.find(a=>a.id===id);if(!account)throw new Error('Tài khoản không tồn tại.');const accountSession=session.fromPartition(`persist:muse-${id}`);for(const win of BrowserWindow.getAllWindows())if(win.webContents.session===accountSession)win.destroy();museWindows.delete(id);await accountSession.clearStorageData();accounts=accounts.filter(a=>a.id!==id);await persist();return accounts;});
-register('openMuse',async(id,prompt)=>{
+register('removeAccount',async id=>{if(museRun)throw new Error('Dừng hàng đợi Muse trước khi xóa tài khoản.');const account=accounts.find(a=>a.id===id);if(!account)throw new Error('Tài khoản không tồn tại.');const accountSession=session.fromPartition(`persist:muse-${id}`);for(const win of BrowserWindow.getAllWindows())if(win.webContents.session===accountSession)win.destroy();museWindows.delete(id);await accountSession.clearStorageData();accounts=accounts.filter(a=>a.id!==id);await persist();return accounts;});
+async function getMuseWindow(id){
   if(!accounts.some(a=>a.id===id))throw new Error('Hãy thêm và chọn tài khoản Muse trước.');
-  if(prompt)clipboard.writeText(String(prompt));
-  const existing=museWindows.get(id);if(existing&&!existing.isDestroyed()){existing.show();existing.focus();return true;}
+  const existing=museWindows.get(id);if(existing&&!existing.isDestroyed()){existing.show();existing.focus();return existing;}
   const win=new BrowserWindow({width:1200,height:850,title:`Muse — ${accounts.find(a=>a.id===id).name}`,autoHideMenuBar:true,
     webPreferences:{partition:`persist:muse-${id}`,sandbox:true,contextIsolation:true,nodeIntegration:false}});
   const allow=url=>{try{return new URL(url).protocol==='https:';}catch{return false;}};
   win.webContents.on('will-navigate',(e,url)=>{if(!allow(url))e.preventDefault();});
   win.webContents.setWindowOpenHandler(({url})=>allow(url)?{action:'allow',overrideBrowserWindowOptions:{webPreferences:{partition:`persist:muse-${id}`,sandbox:true,contextIsolation:true,nodeIntegration:false}}}:{action:'deny'});
   win.webContents.session.setPermissionRequestHandler((_,__,callback)=>callback(false));
-  museWindows.set(id,win);win.on('closed',()=>museWindows.delete(id));await win.loadURL('https://muse.ai/');return true;
+  museWindows.set(id,win);win.on('closed',()=>museWindows.delete(id));await win.loadURL('https://muse.ai/');return win;
+}
+register('openMuse',async(id,prompt)=>{if(prompt)clipboard.writeText(String(prompt));await getMuseWindow(id);return true;});
+const museSelectors=()=>({composer:settings.museComposer,send:settings.museSend,result:settings.museResult,file:settings.museFile});
+const museNotify=value=>window?.webContents.send('studio:muse',value);
+async function historyFile(root){await fs.mkdir(path.join(root,'.sogit'),{recursive:true});const dir=await realChild(root,'.sogit');return path.join(dir,'muse-history.json');}
+async function readHistory(root){try{return JSON.parse(await fs.readFile(await historyFile(root),'utf8'));}catch(error){if(error.code==='ENOENT')return [];throw error;}}
+register('museCheck',async id=>{const win=await getMuseWindow(id);return inspectMuse(win,museSelectors());});
+register('museReport',async id=>{const win=await getMuseWindow(id),report=await diagnoseMuse(win,museSelectors());const chosen=await dialog.showSaveDialog(window,{title:'Lưu báo cáo nhận diện Muse — không có nội dung chat hoặc token',defaultPath:'muse-diagnostics.json',filters:[{name:'JSON',extensions:['json']}]});if(chosen.canceled)return false;await atomicJSON(chosen.filePath,{version:app.getVersion(),createdAt:new Date().toISOString(),...report});return true;});
+register('museHistory',async()=>{if(!currentRoot)return [];const items=await readHistory(currentRoot);if(museRun)return items;const recovered=interruptedHistory(items);await atomicJSON(await historyFile(currentRoot),recovered);return recovered;});
+register('museStart',async(p,options)=>{
+  if(job||museRun)throw new Error('Đang có tác vụ. Dừng hoặc chờ hoàn tất trước.');
+  const project=requireProject(p),root=currentRoot,kind=options.kind;
+  if(!['image','video','reference','script'].includes(kind))throw new Error('Loại tạo nội dung không hợp lệ.');
+  const accountFor=target=>{const id=options.accountId||target?.accountId||(accounts.length===1?accounts[0].id:'');if(!accounts.some(a=>a.id===id))throw new Error('Chọn tài khoản Muse đã đăng nhập.');return id;};
+  let tasks=[];
+  if(kind==='script'){
+    if(!project.story.trim())throw new Error('Nhập kịch bản trước khi nhờ Muse chia shot.');
+    tasks=[taskRecord({kind,accountId:accountFor(),title:'Muse phân tích và chia shot',prompt:buildShotlistPrompt(project,Number(options.maxShotDuration)||8),referencePaths:[]})];
+  }else if(kind==='reference'){
+    const ref=project.references.find(r=>r.id===options.referenceId);if(!ref)throw new Error('Lưu reference trước khi tạo ảnh.');
+    if(ref.locked)throw new Error('Mở khóa reference trước khi tạo phiên bản mới.');
+    const input=project.assets.find(a=>a.id===ref.assetId&&a.type==='image');
+    tasks=[taskRecord({kind:'image',targetType:'reference',targetId:ref.id,accountId:accountFor(),title:`Reference: ${ref.name}`,referencePaths:input?[input.path]:[],prompt:`Generate one finished cinematic reference sheet IMAGE now for ${ref.kind}: ${ref.name}. ${ref.description}. Style: ${project.style}. World: ${project.bible}. If an image is attached, preserve its identity. Show useful consistent views; return the generated image, not instructions.`})];
+  }else{
+    const ids=[...new Set(options.sceneIds||[])];if(!ids.length||ids.length>200)throw new Error('Chọn từ 1 đến 200 shot mỗi lượt.');
+    const unresolved=(await readHistory(root)).filter(item=>['uncertain','interrupted','sending','sent','downloading'].includes(item.status));
+    if(ids.length>1&&ids.some(id=>unresolved.some(item=>item.targetId===id)))throw new Error('Có shot chưa rõ kết quả từ lần trước. Kiểm tra Muse và xử lý từng shot trước khi chạy lại hàng loạt.');
+    tasks=ids.map(id=>{
+      const scene=project.scenes.find(s=>s.id===id);if(!scene)throw new Error('Shot không còn trong dự án.');
+      const attached=project.references.filter(r=>scene.referenceIds.includes(r.id)).map(r=>project.assets.find(a=>a.id===r.assetId&&a.type==='image')).filter(Boolean);
+      if(kind==='video'&&scene.selectedImageAssetId){const storyboard=project.assets.find(a=>a.id===scene.selectedImageAssetId&&a.type==='image');if(storyboard)attached.push(storyboard);}
+      return taskRecord({kind,targetType:'scene',targetId:scene.id,accountId:accountFor(scene),title:scene.title,
+        prompt:kind==='image'?buildImagePrompt(project,scene):`Generate the finished VIDEO now, not just instructions. Use the attached storyboard/reference images.\n${scene.prompt||buildPrompt(project,scene)}`,
+        referencePaths:[...new Set(attached.map(a=>a.path))]});
+    });
+  }
+  const id=randomUUID(),controller=new AbortController();museRun={id,controller};
+  try{
+    await queueSave(project,root);
+    const previous=(await readHistory(root)).slice(-300),file=await historyFile(root),selectors=museSelectors();
+    const persistHistory=()=>atomicJSON(file,[...previous,...tasks].slice(-500));await persistHistory();
+    museNotify({id,projectId:project.id,status:'running',stage:`Đang chuẩn bị ${tasks.length} tác vụ Muse`,percent:0,items:tasks});
+    (async()=>{
+      try{
+        const summary=await runQueue({tasks,signal:controller.signal,persist:persistHistory,
+          onUpdate:(item,index)=>museNotify({id,projectId:project.id,status:'running',stage:`${index+1}/${tasks.length} · ${item.title} · ${{queued:'chờ',attaching:'gắn reference',sending:'đang gửi',sent:'đợi Muse',downloading:'nhận kết quả',done:'đã lưu',error:'lỗi',uncertain:'chưa rõ kết quả'}[item.status]||item.status}`,percent:Math.round(index/tasks.length*100),items:tasks}),
+          perform:async(item,onState)=>{
+            const win=await getMuseWindow(item.accountId);controller.signal.throwIfAborted();
+            const files=await Promise.all(item.referencePaths.map(relative=>realChild(root,relative)));
+            const result=await generateMuse({win,prompt:item.prompt,kind:item.kind,files,selectors,signal:controller.signal,onState,timeoutMs:(settings.museTimeout||10)*60000});
+            if(item.kind==='script'){museNotify({id,projectId:project.id,script:result.text});return {resultText:result.text};}
+            const asset=await downloadMuseMedia({win,src:result.src,kind:item.kind,root,signal:controller.signal,decodeImage:nativeImage.createFromBuffer});
+            asset.name=`${item.title} — ${item.kind} ${asset.id.slice(0,8)}${path.extname(asset.path)}`;
+            const entry={targetType:item.targetType,targetId:item.targetId,asset};generated.entries.push(entry);
+            await writes;const latest=await loadProject(root);await queueSave(latest,root);
+            museNotify({id,projectId:project.id,entries:[{...entry,asset:{...asset,url:mediaURL(asset)}}]});
+            return {assetId:asset.id};
+          }});
+        museNotify({id,projectId:project.id,...summary,percent:summary.status==='done'?100:Math.round(summary.done/summary.total*100),stage:summary.status==='done'?`Đã lưu ${summary.done}/${summary.total} kết quả Muse`:`Dừng hàng đợi · đã lưu ${summary.done}/${summary.total}. Xem nhật ký và kiểm tra Muse.`,items:tasks});
+      }catch(error){museNotify({id,projectId:project.id,status:'error',stage:error.message,items:tasks});}
+      finally{museRun=null;}
+    })();return {id};
+  }catch(error){museRun=null;throw error;}
 });
+
 register('generateText',async({task,project,sceneId})=>{
   const p=requireProject(project);let request;
   if(task==='script')request=`Viết kịch bản phân cảnh bằng tiếng Việt từ ý tưởng dưới đây. Mỗi cảnh bắt đầu bằng CẢNH n — tên cảnh, sau đó mô tả hành động và góc máy. Ghi mỗi trường trên một dòng: LỜI DẪN: nội dung; HỘI THOẠI: Tên nhân vật: nội dung; THỜI LƯỢNG: số giây. Nếu nhiều câu thoại, lặp lại tiền tố HỘI THOẠI: cho mỗi dòng. Không dùng Markdown code block. Giữ thông tin nhân vật và bối cảnh nhất quán.\nPhong cách: ${p.style}\nHồ sơ phim: ${p.bible}\nÝ tưởng/kịch bản: ${p.story}`;
@@ -133,11 +202,11 @@ register('exportPrompts',async p=>{const project=requireProject(p);const result=
 register('exportSrt',async p=>{const project=requireProject(p);const result=await dialog.showSaveDialog(window,{defaultPath:path.join(currentRoot,'subtitles.srt'),filters:[{name:'Subtitles',extensions:['srt']}]});if(result.canceled)return false;await fs.writeFile(result.filePath,toSrt(project));return true;});
 register('startRender',(p,o)=>runJob('render',p,o));
 register('startUpscale',(p,o)=>runJob('upscale',p,o));
-register('cancelJob',async()=>{job?.controller.abort();return true;});
+register('cancelJob',async()=>{job?.controller.abort();museRun?.controller.abort();return true;});
 register('showProject',async()=>{if(currentRoot)await shell.openPath(currentRoot);});
 register('openExternal',async url=>{if(!['https://github.com/lsmedia2105/SogiT-mose-Ai','https://muse.ai/','https://ffmpeg.org/download.html','https://github.com/xinntao/Real-ESRGAN-ncnn-vulkan/releases'].includes(url))throw new Error('Liên kết không được hỗ trợ.');await shell.openExternal(url);});
 if(useBuiltUI)await window.loadFile(path.join(here,'../dist/index.html'));else await window.loadURL('http://localhost:5173');
-window.on('close',event=>{if(job){const result=dialog.showMessageBoxSync(window,{type:'warning',message:'Đang xử lý video. Thoát sẽ hủy tác vụ đang chạy.',buttons:['Tiếp tục làm việc','Hủy tác vụ và thoát'],defaultId:0,cancelId:0});if(result===0){event.preventDefault();return;}job.controller.abort();}});
+window.on('close',event=>{if(job||museRun){const result=dialog.showMessageBoxSync(window,{type:'warning',message:'Đang có tác vụ. Thoát sẽ dừng Studio; yêu cầu đã gửi lên Muse có thể vẫn chạy.',buttons:['Tiếp tục làm việc','Dừng chờ và thoát'],defaultId:0,cancelId:0});if(result===0){event.preventDefault();return;}job?.controller.abort();museRun?.controller.abort();}});
 app.on('window-all-closed',()=>app.quit());
-app.on('before-quit',()=>{job?.controller.abort();});
+app.on('before-quit',()=>{job?.controller.abort();museRun?.controller.abort();});
 }).catch(error=>{console.error('Không thể khởi động Studio:',error.message);app.quit();});

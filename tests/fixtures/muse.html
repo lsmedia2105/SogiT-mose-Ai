@@ -1,0 +1,28 @@
+<!doctype html><html><head><meta charset="utf-8"><style>body{font:16px sans-serif;background:#fff;padding:20px 20px 160px}section{margin:12px;padding:12px;background:#eee}img,video{width:256px;height:144px;object-fit:contain}form{position:fixed;bottom:0;left:0;right:0;padding:15px;background:#ddd}textarea{width:70%;height:70px}button{padding:20px}input{display:block}</style></head><body>
+<section data-message-author-role="assistant"><p>Old response, must never count as a new generation.</p><img src="/fixture/image.png?old=1"></section>
+<div id="messages"></div><form><input type="file" accept="image/*" multiple><div id="attachments"></div><textarea placeholder="Message" aria-label="Message"></textarea><button type="submit" aria-label="Send message">Send</button></form>
+<script>
+window.fixture={submissions:[],hold:false,quota:false};
+const form=document.querySelector('form'),input=document.querySelector('textarea'),files=document.querySelector('input[type=file]');
+files.onchange=()=>{document.querySelector('#attachments').textContent=files.files.length+' reference files attached';};
+form.onsubmit=e=>{
+ e.preventDefault();if(!input.value.trim())return;
+ const prompt=input.value;window.fixture.submissions.push({prompt,files:[...files.files].map(f=>f.name)});
+ const user=document.createElement('section');user.dataset.messageAuthorRole='user';user.textContent=prompt;document.querySelector('#messages').append(user);
+ for(const file of files.files){const img=document.createElement('img');img.src=URL.createObjectURL(file);user.append(img);}
+ input.value='';files.value='';document.querySelector('#attachments').textContent='';
+ const assistant=document.createElement('section');assistant.dataset.messageAuthorRole='assistant';assistant.setAttribute('aria-busy','true');assistant.textContent='Generating…';document.querySelector('#messages').append(assistant);
+ if(window.fixture.hold)return;
+ setTimeout(()=>{
+  assistant.removeAttribute('aria-busy');assistant.textContent='';
+  if(window.fixture.quota){assistant.textContent='Quota exceeded';return;}
+  if(prompt.includes('Chuyển kịch bản dưới đây')){
+   assistant.textContent='MASTER VISUAL LOCK\nBlue coats, Vietnamese seaside.\nCẢNH 1 — Harbor\nSHOT 1 | 00:00–00:08\nLinh walks to the lighthouse.\nIMAGE PROMPT: Cinematic seaside.\nSHOT 2 | 00:08–00:16\nShe opens the door.';
+  }else if(prompt.includes('finished VIDEO')){
+   const v=document.createElement('video');v.controls=true;v.src='/fixture/video.mp4?new='+window.fixture.submissions.length;assistant.append(v);
+  }else{
+   const img=document.createElement('img');img.src='/fixture/image.png?new='+window.fixture.submissions.length;assistant.append(img);
+  }
+ },500);
+};
+</script></body></html>

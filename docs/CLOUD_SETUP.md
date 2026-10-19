@@ -53,3 +53,8 @@ DISPLAY=:99 XDG_CONFIG_HOME=/tmp/sogit-config XDG_CACHE_HOME=/tmp/sogit-cache np
 ```
 
 The test launches the built UI from disk (`--studio-built-ui`), exercises native dialogs with controlled test selections, media loading, isolated account windows with a stub remote page, and a real FFmpeg export. It never claims a live Muse login. Test-only `--no-sandbox` is needed in this Linux container; the normal application does not add it. All test project/credential state is under a temporary directory and removed afterward. Do not stop an X server you did not start.
+
+
+## Muse automation fixture
+
+`DISPLAY=:99 XDG_CONFIG_HOME=/tmp/sogit-config XDG_CACHE_HOME=/tmp/sogit-cache npm run test:muse` uses the same virtual display after `npm run build`. It intercepts the test account's HTTPS Muse session with local fixture HTML and valid image/video files. It checks native upload, send-once, result capture, media persistence, scripts, draft protection and cancellation. This is not evidence that the live Muse DOM works. For actual compatibility, use the account's **Check Muse** and redacted **Connection report** features on the user's desktop. Never collect cookies or passwords.

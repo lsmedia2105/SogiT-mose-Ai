@@ -4,7 +4,7 @@ export function createScene(index = 0, changes = {}) {
   return { id: uid(), title: `Cảnh ${index + 1}`, description: '', prompt: '', duration: 8,
     shot: 'Trung cảnh', camera: 'Máy tĩnh', emotion: '', dialogue: '', narration: '',
     referenceIds: [], accountId: '', status: 'draft', versions: [], selectedVersionId: '',
-    narrationAssetId: '', dialogueAssetId: '', ...changes };
+    narrationAssetId: '', dialogueAssetId: '', imageVersions: [], selectedImageAssetId: '', imagePrompt: '', parentScene: '', ...changes };
 }
 export function createProject(name = 'Bộ phim chưa đặt tên') {
   const timestamp = now();
@@ -14,30 +14,7 @@ export function createProject(name = 'Bộ phim chưa đặt tên') {
     story: '', bible: '', narratorVoice: 'alloy', references: [], scenes: [], assets: [],
     musicAssetId: '', musicVolume: 0.15, logs: [] };
 }
-export function splitScript(text) {
-  const normalized = text.trim().replace(/\r\n/g, '\n');
-  if (!normalized) return [];
-  const marked = normalized.split(/(?=^(?:#{1,3}\s*)?(?:CẢNH|SCENE)\s+\d+\b)/gim).filter(s => s.trim());
-  const hasHeadings = /^(?:#{1,3}\s*)?(?:CẢNH|SCENE)\s+\d+\b/im.test(normalized);
-  const blocks = hasHeadings ? marked : normalized.split(/\n\s*\n/).filter(s => s.trim());
-  return blocks.map((block, index) => {
-    const lines = block.trim().split('\n');
-    const heading = /^(?:#{1,3}\s*)?(?:CẢNH|SCENE)\s+\d+/i.test(lines[0]);
-    const title=heading ? lines.shift().replace(/^#+\s*/, '').slice(0,160) : `Cảnh ${index+1}`;
-    const content=[],narration=[],dialogue=[];
-    let duration=8;
-    for(const line of lines){
-      const voice=line.match(/^\s*(?:LỜI DẪN|VOICE[ -]?OVER|NARRATION)\s*:\s*(.*)$/i);
-      const speech=line.match(/^\s*(?:HỘI THOẠI|LỜI THOẠI|DIALOGUE)\s*:\s*(.*)$/i);
-      const seconds=line.match(/^\s*(?:THỜI LƯỢNG|DURATION)\s*:\s*(\d+)\s*(?:s|giây|seconds)?\s*$/i);
-      if(voice)narration.push(voice[1]);
-      else if(speech)dialogue.push(speech[1]);
-      else if(seconds)duration=Math.max(1,Math.min(600,Number(seconds[1])));
-      else content.push(line);
-    }
-    return createScene(index,{title,description:content.join('\n').trim(),narration:narration.join('\n'),dialogue:dialogue.join('\n'),duration});
-  });
-}
+export { splitScript, parseScript, buildImagePrompt, buildShotlistPrompt } from './script.mjs';
 export function buildPrompt(project, scene) {
   const refs = project.references.filter(ref => scene.referenceIds.includes(ref.id));
   return [

@@ -1,6 +1,6 @@
 {
   "name": "sogit-muse-studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Studio desktop cho phim storytelling — dự án, reference, phân cảnh và hậu kỳ",
   "main": "electron/main.mjs",
@@ -13,7 +13,8 @@
     "dist:win": "npm run build && electron-builder --win nsis --x64",
     "dist:dir": "npm run build && electron-builder --dir",
     "test:desktop": "node tests/desktop.mjs",
-    "dist:zip": "npm run build && electron-builder --win zip --x64 --config.win.signAndEditExecutable=false"
+    "dist:zip": "npm run build && electron-builder --win zip --x64 --config.win.signAndEditExecutable=false",
+    "test:muse": "node tests/muse-desktop.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

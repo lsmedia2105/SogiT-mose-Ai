@@ -8,7 +8,7 @@ on:
       tag:
         description: 'Existing version tag to build (for example v0.1.0)'
         required: true
-        default: 'v0.1.0'
+        default: 'v0.2.0'
 
 permissions:
   contents: read
@@ -38,6 +38,14 @@ jobs:
           fi
       - run: npm run build
       - run: npm test
+      - name: Test native Muse automation against a local fixture
+        run: |
+          if ! command -v xvfb-run >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y xvfb xauth
+          fi
+          node node_modules/electron/install.js
+          xvfb-run --auto-servernum npm run test:muse
 
   windows:
     needs: verify
