@@ -1,0 +1,43 @@
+import { _electron as electron } from '@playwright/test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { runProcess, probeMedia } from '../electron/media.mjs';
+const root=await fs.mkdtemp(path.join(os.tmpdir(),'sogit-native-test-'));
+const source=path.join(root,'source.mp4'),image=path.join(root,'reference.png'),output=path.join(root,'result.mp4');
+await fs.writeFile(image,Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWKkAAAAASUVORK5CYII=','base64'));
+await runProcess('ffmpeg',['-y','-f','lavfi','-i','color=c=blue:s=320x180:r=24:d=1','-c:v','libx264','-pix_fmt','yuv420p',source]);
+const app=await electron.launch({args:['--no-sandbox','--disable-gpu',`--user-data-dir=${path.join(root,'userdata')}`,'.','--studio-built-ui'],timeout:20000});
+const errors=[];
+try{
+  const page=await app.firstWindow();page.on('pageerror',e=>errors.push(e.message));await page.waitForSelector('h1');
+  assert.equal(await page.evaluate(()=>!!window.studio),true);
+  const boot=await page.evaluate(()=>window.studio.bootstrap());assert.equal(boot.desktop,true);assert.ok(boot.tools.ffmpeg);assert.ok(boot.tools.ffprobe);
+  await app.evaluate(({dialog},paths)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[paths.root]});dialog.showSaveDialog=async()=>({canceled:false,filePath:paths.output});}, {root,output});
+  const created=await page.evaluate(()=>window.studio.createProject('Phim kiểm thử'));
+  assert.ok(created.root.startsWith(root));
+  await app.evaluate(({dialog},files)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:files});},[source,image]);
+  const assets=await page.evaluate(()=>window.studio.importAssets());assert.equal(assets.length,2);
+  const project=created.project;project.assets=assets;project.scenes=[{id:crypto.randomUUID(),title:'Cảnh 1',description:'Biển xanh',prompt:'Test',duration:1,shot:'Toàn cảnh',camera:'Máy tĩnh',emotion:'',dialogue:'',narration:'Bình minh.',referenceIds:[],accountId:'',status:'approved',versions:[{id:'v1',assetId:assets[0].id,createdAt:new Date().toISOString()}],selectedVersionId:'v1',narrationAssetId:'',dialogueAssetId:''}];
+  await page.evaluate(p=>window.studio.saveProject(p),project);
+  await fs.rm(source);await fs.rm(image);
+  await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},path.join(created.root,'project.sogit.json'));
+  const opened=await page.evaluate(()=>window.studio.openProject());assert.equal(opened.project.name,'Phim kiểm thử');
+  assert.equal(opened.project.scenes[0].prompt,'Test');
+  const loadedImage=await page.evaluate(async url=>{const img=new Image();img.src=url;await img.decode();return img.naturalWidth;},assets[1].url);assert.equal(loadedImage,1);
+  await page.evaluate(async()=>{await window.studio.addAccount('Muse A');await window.studio.addAccount('Muse B');});
+  // Simulate only the remote page load. No Muse authentication or API is claimed.
+  await app.evaluate(({BrowserWindow})=>{const original=BrowserWindow.prototype.loadURL;BrowserWindow.prototype.loadURL=function(url,...args){return original.call(this,url==='https://muse.ai/'?'data:text/html,<h1>Muse login stub</h1>':url,...args);};});
+  const accounts=(await page.evaluate(()=>window.studio.bootstrap())).accounts;
+  await page.evaluate(async ids=>{await window.studio.openMuse(ids[0],'prompt continuity');await window.studio.openMuse(ids[1],'second prompt');},accounts.map(a=>a.id));
+  const sessions=await app.evaluate(({BrowserWindow,clipboard})=>({windows:BrowserWindow.getAllWindows().map(w=>({storage:w.webContents.session.storagePath,node:w.webContents.getLastWebPreferences().nodeIntegration,sandbox:w.webContents.getLastWebPreferences().sandbox})),clipboard:clipboard.readText()}));
+  assert.equal(sessions.windows.length,3);const partitions=sessions.windows.map(w=>w.storage).filter(p=>p?.includes('muse-'));assert.equal(new Set(partitions).size,2);assert.equal(sessions.clipboard,'second prompt');assert.ok(sessions.windows.every(w=>w.node===false&&w.sandbox===true));
+  await page.evaluate(id=>window.studio.removeAccount(id),accounts[0].id);
+  assert.equal((await page.evaluate(()=>window.studio.bootstrap())).accounts.length,1);
+  await page.evaluate(p=>window.studio.startRender(p,{resolution:'720p'}),project);
+  await page.waitForFunction(()=>document.querySelector('.job-info strong')?.textContent==='Đã xuất video',{},{timeout:30000});
+  const info=await probeMedia({},output);assert.equal(info.streams[0].width,1280);assert.ok(Math.abs(Number(info.format.duration)-1)<0.2);
+  assert.deepEqual(errors,[]);
+  console.log('PASS: built desktop UI, preload IPC, hardware/tools, native folder project save/reopen, imported source independence, custom media protocol, isolated account windows + clipboard + removal (stub page), real FFmpeg export through IPC.');
+}finally{await app.close();await fs.rm(root,{recursive:true,force:true});}

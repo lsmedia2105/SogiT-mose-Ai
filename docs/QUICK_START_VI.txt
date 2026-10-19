@@ -1,0 +1,17 @@
+SOGIT STUDIO 0.1.0 — BAN THU NGHIEM WINDOWS
+
+1. Giai nen toan bo ZIP vao thu muc co quyen ghi. Chay SogiT Studio.exe.
+2. Tao du an va chon thu muc luu tren o dia.
+3. Nhap kich ban; them reference; chia canh; ghep va sua prompt.
+4. Them ten tai khoan Muse, mo cua so de tu dang nhap.
+5. Mo Muse & copy prompt trong canh, dan prompt va dinh kem reference.
+6. Tai video tu Muse, nhap vao canh, duyet va chon ban dung.
+7. Cai FFmpeg/FFprobe, chon executable trong Cai dat de ghep/xuat MP4.
+
+AI viet kich ban qua API rieng la tuy chon, khong tu dung token Muse.
+Chua tu dong tao video Muse, tong hop giong, lip-sync hoac xoa watermark.
+Khong can Node.js de chay goi ZIP. Can Windows 10/11 x64.
+Goi chua ky so; chua kiem thu tren may Windows thuc.
+Sao luu ca project.sogit.json VA thu muc assets de giu du lieu.
+
+Huong dan day du (tieng Viet co dau): README.md trong ma nguon du an.
