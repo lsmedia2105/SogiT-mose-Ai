@@ -1,0 +1,92 @@
+name: Build and release Windows
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag to build (for example v0.1.0)'
+        required: true
+        default: 'v0.1.0'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install build and test dependencies
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Ensure FFmpeg is installed
+        run: |
+          if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+      - run: npm run build
+      - run: npm test
+
+  windows:
+    needs: verify
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    env:
+      RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Build Windows ZIP
+        run: npm run dist:zip
+      - name: Create SHA256 checksums
+        shell: pwsh
+        run: |
+          $lines = Get-ChildItem release -Filter '*-win.zip' | ForEach-Object {
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)"
+          }
+          if (-not $lines) { throw 'No Windows ZIP was produced.' }
+          $lines | Set-Content release/SHA256SUMS.txt -Encoding utf8
+      - name: Retain downloadable build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SogiT-Studio-Windows-${{ env.RELEASE_TAG }}
+          path: |
+            release/*-win.zip
+            release/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Publish GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $assets = @((Get-ChildItem release -Filter '*-win.zip').FullName)
+          $assets += (Resolve-Path release/SHA256SUMS.txt).Path
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY 2>$null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $env:RELEASE_TAG @assets --repo $env:GITHUB_REPOSITORY --clobber
+          } else {
+            gh release create $env:RELEASE_TAG @assets --repo $env:GITHUB_REPOSITORY --verify-tag --title "SogiT Studio $env:RELEASE_TAG" --notes-file .github/RELEASE_NOTES.md
+          }
+          if ($LASTEXITCODE -ne 0) { throw 'Publishing the release failed. The build artifact is available in Actions.' }

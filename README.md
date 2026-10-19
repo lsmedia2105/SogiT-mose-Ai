@@ -4,6 +4,8 @@
 
 ## Dùng trên Windows
 
+Tải gói Windows tại **[GitHub Releases](https://github.com/lsmedia2105/SogiT-mose-Ai/releases/latest)**. Chọn `SogiT Studio-0.1.0-win.zip` trong **Assets**. Nếu bản Release chưa xuất hiện, xem tiến độ ở **[Actions](https://github.com/lsmedia2105/SogiT-mose-Ai/actions/workflows/windows-release.yml)**. Workflow chạy khi đẩy tag `v*`, kiểm thử core trên Linux rồi build Windows và đăng ZIP lên Release; có thể chạy lại thủ công theo tag.
+
 Gói thử nghiệm: `release/SogiT Studio-0.1.0-win.zip`. Giải nén **toàn bộ** rồi chạy `SogiT Studio.exe`; không chạy executable bên trong ZIP. Không cần Node.js để dùng gói này. Windows 10/11 64-bit; không bắt buộc NVIDIA cho quản lý dự án và thao tác cloud. Gói chưa ký số và chưa được thử trên máy Windows thực.
 
 1. Tạo dự án, chọn thư mục lưu trên ổ có đủ dung lượng.
