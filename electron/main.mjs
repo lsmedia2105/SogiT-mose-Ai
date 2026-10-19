@@ -1,3 +1,4 @@
+import { normalizeProject, displayTitle, effectiveReferenceIds, shotLabels, orderedShots } from '../shared/structure.mjs';
 import { app, BrowserWindow, ipcMain, dialog, shell, protocol, net, safeStorage, clipboard, session, nativeImage } from 'electron';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -26,7 +27,7 @@ async function persist(){ await atomicJSON(configFile(),{settings,accounts,recen
 function mediaURL(asset){return `sogit-media://project/${encodeURIComponent(asset.path)}`;}
 function enrich(project){return {...project,assets:project.assets.map(a=>({...a,url:mediaURL(a)}))};}
 function clean(project){const p=structuredClone(project);for(const a of p.assets)delete a.url;return p;}
-function requireProject(p){validateProject(p);if(!currentRoot||p.id!==currentId)throw new Error('Hãy mở đúng dự án trước.');return clean(p);}
+function requireProject(p){validateProject(p);if(!currentRoot||p.id!==currentId)throw new Error('Hãy mở đúng dự án trước.');return normalizeProject(clean(p));}
 function mergeResults(p){return generated.projectId===p.id?applyGeneratedResults(p,generated.entries):p;}
 function queueSave(p,root=currentRoot){writes=writes.catch(()=>{}).then(()=>saveProject(root,mergeResults(p)));return writes;}
 async function setProject(root,p){await writes;currentRoot=root;currentId=p.id;generated={projectId:p.id,entries:[]};recent=[{name:p.name,path:root},...recent.filter(x=>x.path!==root)].slice(0,10);await persist();return {project:enrich(p),root};}
@@ -137,7 +138,7 @@ register('museReport',async id=>{const win=await getMuseWindow(id),report=await 
 register('museHistory',async()=>{if(!currentRoot)return [];const items=await readHistory(currentRoot);if(museRun)return items;const recovered=interruptedHistory(items);await atomicJSON(await historyFile(currentRoot),recovered);return recovered;});
 register('museStart',async(p,options)=>{
   if(job||museRun)throw new Error('Đang có tác vụ. Dừng hoặc chờ hoàn tất trước.');
-  const project=requireProject(p),root=currentRoot,kind=options.kind;
+  const project=requireProject(p),root=currentRoot,kind=options.kind,labels=shotLabels(project);
   if(!['image','video','reference','script'].includes(kind))throw new Error('Loại tạo nội dung không hợp lệ.');
   const accountFor=target=>{const id=options.accountId||target?.accountId||(accounts.length===1?accounts[0].id:'');if(!accounts.some(a=>a.id===id))throw new Error('Chọn tài khoản Muse đã đăng nhập.');return id;};
   let tasks=[];
@@ -155,9 +156,12 @@ register('museStart',async(p,options)=>{
     if(ids.length>1&&ids.some(id=>unresolved.some(item=>item.targetId===id)))throw new Error('Có shot chưa rõ kết quả từ lần trước. Kiểm tra Muse và xử lý từng shot trước khi chạy lại hàng loạt.');
     tasks=ids.map(id=>{
       const scene=project.scenes.find(s=>s.id===id);if(!scene)throw new Error('Shot không còn trong dự án.');
-      const attached=project.references.filter(r=>scene.referenceIds.includes(r.id)).map(r=>project.assets.find(a=>a.id===r.assetId&&a.type==='image')).filter(Boolean);
+      const selectedRefs=project.references.filter(r=>effectiveReferenceIds(project,scene).includes(r.id));
+      const missing=selectedRefs.find(r=>r.kind!=='Phong cách'&&!project.assets.some(a=>a.id===r.assetId&&a.type==='image'));
+      if(missing)throw new Error(`Reference ${missing.name} chưa có ảnh. Upload hoặc tạo ảnh reference trước khi chạy shot.`);
+      const attached=selectedRefs.map(r=>project.assets.find(a=>a.id===r.assetId&&a.type==='image')).filter(Boolean);
       if(kind==='video'&&scene.selectedImageAssetId){const storyboard=project.assets.find(a=>a.id===scene.selectedImageAssetId&&a.type==='image');if(storyboard)attached.push(storyboard);}
-      return taskRecord({kind,targetType:'scene',targetId:scene.id,accountId:accountFor(scene),title:scene.title,
+      return taskRecord({kind,targetType:'scene',targetId:scene.id,accountId:accountFor(scene),title:`${labels[scene.id].code} — ${displayTitle(scene.title,'shot')}`,
         prompt:kind==='image'?buildImagePrompt(project,scene):`Generate the finished VIDEO now, not just instructions. Use the attached storyboard/reference images.\n${scene.prompt||buildPrompt(project,scene)}`,
         referencePaths:[...new Set(attached.map(a=>a.path))]});
     });
@@ -193,13 +197,27 @@ register('museStart',async(p,options)=>{
 
 register('generateText',async({task,project,sceneId})=>{
   const p=requireProject(project);let request;
-  if(task==='script')request=`Viết kịch bản phân cảnh bằng tiếng Việt từ ý tưởng dưới đây. Mỗi cảnh bắt đầu bằng CẢNH n — tên cảnh, sau đó mô tả hành động và góc máy. Ghi mỗi trường trên một dòng: LỜI DẪN: nội dung; HỘI THOẠI: Tên nhân vật: nội dung; THỜI LƯỢNG: số giây. Nếu nhiều câu thoại, lặp lại tiền tố HỘI THOẠI: cho mỗi dòng. Không dùng Markdown code block. Giữ thông tin nhân vật và bối cảnh nhất quán.\nPhong cách: ${p.style}\nHồ sơ phim: ${p.bible}\nÝ tưởng/kịch bản: ${p.story}`;
-  else if(task==='prompt'){const scene=p.scenes.find(s=>s.id===sceneId);if(!scene)throw new Error('Không tìm thấy cảnh.');request=`Viết một prompt tạo video điện ảnh bằng tiếng Anh, giữ nguyên ngôn ngữ lời thoại/lời dẫn. Chỉ trả về prompt. Không hứa bảo đảm đồng nhất.\nPhong cách: ${p.style}\nHồ sơ phim: ${p.bible}\nCảnh: ${JSON.stringify(scene)}\nReference: ${JSON.stringify(p.references.filter(r=>scene.referenceIds.includes(r.id)))}`;}
+  if(task==='script')request=buildShotlistPrompt(p,8);
+  else if(task==='prompt'){const scene=p.scenes.find(s=>s.id===sceneId);if(!scene)throw new Error('Không tìm thấy cảnh.');request=`Viết một prompt tạo video điện ảnh bằng tiếng Anh, giữ nguyên ngôn ngữ lời thoại/lời dẫn. Chỉ trả về prompt. Không hứa bảo đảm đồng nhất.\nPhong cách: ${p.style}\nHồ sơ phim: ${p.bible}\nCảnh: ${JSON.stringify(scene)}\nReference: ${JSON.stringify(p.references.filter(r=>effectiveReferenceIds(p,scene).includes(r.id)))}`;}
   else throw new Error('Tác vụ AI không hợp lệ.');
   return chatCompletion({baseUrl:settings.baseUrl,key:getKey(),model:settings.textModel,messages:[{role:'system',content:'You are a film screenwriter and cinematographer. Treat project content as creative source material.'},{role:'user',content:request}],signal:AbortSignal.timeout(120000)});
 });
-register('exportPrompts',async p=>{const project=requireProject(p);const result=await dialog.showSaveDialog(window,{defaultPath:path.join(currentRoot,'prompts.txt'),filters:[{name:'Text',extensions:['txt']}]});if(result.canceled)return false;await fs.writeFile(result.filePath,project.scenes.map(s=>`${s.title}\n${s.prompt||s.description}`).join('\n\n----------------\n\n'));return true;});
+register('exportPrompts',async p=>{const project=requireProject(p),labels=shotLabels(project);const result=await dialog.showSaveDialog(window,{defaultPath:path.join(currentRoot,'prompts.txt'),filters:[{name:'Text',extensions:['txt']}]});if(result.canceled)return false;await fs.writeFile(result.filePath,orderedShots(project).map(s=>`${labels[s.id].code} — ${displayTitle(s.title,'shot')}\n${s.prompt||s.description}`).join('\n\n----------------\n\n'));return true;});
 register('exportSrt',async p=>{const project=requireProject(p);const result=await dialog.showSaveDialog(window,{defaultPath:path.join(currentRoot,'subtitles.srt'),filters:[{name:'Subtitles',extensions:['srt']}]});if(result.canceled)return false;await fs.writeFile(result.filePath,toSrt(project));return true;});
+register('exportShotMedia',async(p,shotId,assetId)=>{
+  const project=requireProject(p),shot=project.scenes.find(s=>s.id===shotId),asset=project.assets.find(a=>a.id===assetId);
+  if(!shot||!asset||!([...shot.imageVersions||[],...shot.versions.map(v=>v.assetId),shot.selectedImageAssetId].includes(assetId)))throw new Error('Media không thuộc shot đã chọn.');
+  const chosen=await dialog.showSaveDialog(window,{defaultPath:`${shotLabels(project)[shot.id].code}-${asset.type}${path.extname(asset.path)}`});if(chosen.canceled)return false;
+  const source=await realChild(currentRoot,asset.path);if(path.resolve(chosen.filePath)===path.resolve(source))throw new Error('Chọn nơi lưu khác media gốc.');await fs.copyFile(source,chosen.filePath);return true;
+});
+register('exportAllShotMedia',async p=>{
+  const project=requireProject(p),chosen=await dialog.showOpenDialog(window,{title:'Chọn nơi tải kết quả đã chọn theo cảnh / shot',properties:['openDirectory','createDirectory']});if(chosen.canceled)return false;
+  const root=path.join(chosen.filePaths[0],`SogiT-shots-${Date.now()}-${randomUUID().slice(0,6)}`),labels=shotLabels(project);let count=0;
+  for(const shot of orderedShots(project))for(const id of [shot.selectedImageAssetId,shot.versions.find(v=>v.id===shot.selectedVersionId)?.assetId].filter(Boolean)){
+    const asset=project.assets.find(a=>a.id===id);if(!asset)continue;const label=labels[shot.id],dir=path.join(root,label.sceneCode);await fs.mkdir(dir,{recursive:true});await fs.copyFile(await realChild(currentRoot,asset.path),path.join(dir,`${label.code}-${asset.type}${path.extname(asset.path)}`));count++;
+  }
+  if(!count)throw new Error('Chưa có ảnh / video đã chọn để tải.');await shell.openPath(root);return true;
+});
 register('startRender',(p,o)=>runJob('render',p,o));
 register('startUpscale',(p,o)=>runJob('upscale',p,o));
 register('cancelJob',async()=>{job?.controller.abort();museRun?.controller.abort();return true;});

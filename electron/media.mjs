@@ -1,3 +1,4 @@
+import { orderedShots } from '../shared/structure.mjs';
 import { spawn } from 'node:child_process';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -31,7 +32,7 @@ export async function renderTimeline({ root, project, settings, output, resoluti
   const [width, height] = outputSize(resolution, project.ratio);
   if (!project.scenes.length) throw new Error('Chưa có phân cảnh.');
   const sources = [];
-  for (const scene of project.scenes) {
+  for (const scene of orderedShots(project)) {
     const selected = scene.versions.find(v => v.id === scene.selectedVersionId);
     const asset = project.assets.find(a => a.id === selected?.assetId && a.type === 'video');
     if (!asset) throw new Error(`${scene.title}: chưa chọn video. Hãy nhập và duyệt video trước khi xuất.`);

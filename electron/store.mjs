@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { validateProject } from '../shared/domain.mjs';
+import { normalizeProject } from '../shared/structure.mjs';
 
 export async function atomicJSON(file, value) {
   await fs.mkdir(path.dirname(file), { recursive: true });
@@ -26,14 +27,20 @@ export async function realChild(root, relative) {
 export async function saveProject(root, project) {
   validateProject(project);
   for (const asset of project.assets) safeChild(root, asset.path);
-  await atomicJSON(path.join(root, 'project.sogit.json'), project);
+  await atomicJSON(path.join(root, 'project.sogit.json'), normalizeProject(project));
 }
 export async function loadProject(root) {
   const stat = await fs.stat(path.join(root, 'project.sogit.json'));
   if (stat.size > 30 * 1024 * 1024) throw new Error('File dự án quá lớn.');
-  const project = validateProject(JSON.parse(await fs.readFile(path.join(root, 'project.sogit.json'), 'utf8')));
+  const source=await fs.readFile(path.join(root,'project.sogit.json'),'utf8');
+  const project = validateProject(JSON.parse(source));
   for (const asset of project.assets) safeChild(root, asset.path);
-  return project;
+  if(project.structureVersion!==2){
+    await fs.mkdir(path.join(root,'.sogit'),{recursive:true});
+    const dir=await realChild(root,'.sogit');
+    try{await fs.writeFile(path.join(dir,'project-before-v0.3.json'),source,{flag:'wx',mode:0o600});}catch(error){if(error.code!=='EEXIST')throw error;}
+  }
+  return normalizeProject(project);
 }
 export async function importAsset(root, source) {
   const ext = path.extname(source).toLowerCase();

@@ -1,3 +1,4 @@
+import { effectiveReferenceIds } from './structure.mjs';
 export const uid = () => globalThis.crypto.randomUUID();
 export const now = () => new Date().toISOString();
 export function createScene(index = 0, changes = {}) {
@@ -11,12 +12,12 @@ export function createProject(name = 'Bộ phim chưa đặt tên') {
   return { schemaVersion: 1, id: uid(), name: name.trim() || 'Bộ phim chưa đặt tên',
     createdAt: timestamp, updatedAt: timestamp, genre: 'Điện ảnh', ratio: '16:9', fps: 24,
     style: 'Cinematic realism, natural lighting, subtle film grain, cohesive color grading',
-    story: '', bible: '', narratorVoice: 'alloy', references: [], scenes: [], assets: [],
+    structureVersion: 2, sceneGroups: [], story: '', bible: '', narratorVoice: 'alloy', references: [], scenes: [], assets: [],
     musicAssetId: '', musicVolume: 0.15, logs: [] };
 }
 export { splitScript, parseScript, buildImagePrompt, buildShotlistPrompt } from './script.mjs';
 export function buildPrompt(project, scene) {
-  const refs = project.references.filter(ref => scene.referenceIds.includes(ref.id));
+  const refs = project.references.filter(ref => effectiveReferenceIds(project,scene).includes(ref.id));
   return [
     `CINEMATIC SHOT | ${project.ratio} | ${scene.duration}s | ${project.fps} fps`,
     `VISUAL STYLE: ${project.style}`,
@@ -50,7 +51,13 @@ export function validateProject(p) {
     ids.add(item.id);
   }
   for (const s of p.scenes) {
-    if (!Number.isFinite(s.duration) || s.duration < 1 || s.duration > 600 || !Array.isArray(s.referenceIds) || !Array.isArray(s.versions)) throw new Error('Phân cảnh không hợp lệ.');
+    if (!Number.isFinite(s.duration) || s.duration < 0.1 || s.duration > 600 || !Array.isArray(s.referenceIds) || !Array.isArray(s.versions)) throw new Error('Phân cảnh không hợp lệ.');
+  }
+  if(p.sceneGroups!==undefined){
+    if(!Array.isArray(p.sceneGroups))throw new Error('Danh sách cảnh không hợp lệ.');
+    const groupIds=new Set();
+    for(const group of p.sceneGroups){if(!group||typeof group.id!=='string'||!/^[\w-]{1,100}$/.test(group.id)||groupIds.has(group.id)||typeof group.title!=='string'||!Array.isArray(group.referenceIds))throw new Error('Cấu trúc cảnh không hợp lệ.');groupIds.add(group.id);}
+    for(const shot of p.scenes)if(shot.groupId&&!groupIds.has(shot.groupId))throw new Error('Shot trỏ đến cảnh không tồn tại.');
   }
   if (!['16:9','9:16','1:1','2.39:1'].includes(p.ratio) || ![24,25,30].includes(p.fps)) throw new Error('Tỷ lệ hoặc FPS không hợp lệ.');
   return p;

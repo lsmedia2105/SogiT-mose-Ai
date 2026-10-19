@@ -6,7 +6,7 @@
 
 Ảnh người dùng cung cấp cho thấy Muse ở `https://muse.ai/`, tài khoản có giới hạn tuần và 1 tỷ token bổ sung, thư viện ảnh/video và thao tác tạo video mở chat. Ảnh không xác minh API, cách tính token, model, giới hạn đồng thời, hỗ trợ reference hoặc quyền tải không watermark. Không khẳng định các khả năng này khi chưa có chứng cứ runtime/tài liệu.
 
-## Đã triển khai trong bản 0.2.0
+## Đã triển khai trong bản 0.3.0
 
 | Thành phần | Phạm vi |
 | --- | --- |
@@ -47,3 +47,10 @@
 - [FFmpeg](https://ffmpeg.org/): gọi executable do người dùng cài, chưa phân phối binary.
 
 Việc dùng model/API/binary có giấy phép riêng. Bản đầu không tuyên bố quyền thương mại cho nội dung tạo ra hay gói model không đi kèm.
+
+
+## Cập nhật v0.3.0 — cấu trúc đã chốt với người dùng
+
+Một cảnh chứa nhiều shot, không biến các mốc 0–2, 2–4, 4–6, 6–8 thành bốn cảnh. Dữ liệu nhóm cảnh được lưu trong sceneGroups; các đơn vị sản xuất/shot giữ ID trong trường scenes cũ để tương thích kết quả và hàng đợi. Shot có groupId; không lưu mã đánh số làm khóa. Mã Cxxx-Sxxx được tính từ thứ tự hiện tại. Mọi xuất phim/SRT/prompt/download dùng cùng thứ tự nhóm và shot.
+
+Upload reference và nhập kịch bản trong Studio. Gán theo tên và alias khớp từ; toàn phim/cảnh là phạm vi kế thừa, shot có thể loại trừ riêng. Bộ gợi ý là đối chiếu chữ, chưa hiểu ngữ nghĩa hoặc nhận dạng ảnh. Dự án cũ giữ ID/media/ref và có backup nguyên văn trước chuyển đổi. Kịch bản cũ cần chia lại qua preview nếu muốn các card cũ thành nhiều shot mới.

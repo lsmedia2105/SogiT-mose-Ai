@@ -1,12 +1,39 @@
 # SogiT Studio
 
-Ứng dụng desktop Windows cho phim storytelling có lời dẫn và hội thoại. Giao diện tiếng Việt, dự án nằm trên ổ đĩa, tham chiếu được gán theo cảnh. Bản đầu **v0.2.0**.
+Ứng dụng desktop Windows cho phim storytelling có lời dẫn và hội thoại. Giao diện tiếng Việt, dự án nằm trên ổ đĩa, tham chiếu được gán theo cảnh. Bản đầu **v0.3.0**.
+
+## Studio một tab: cảnh chứa shot (v0.3.0)
+
+1. Mở **Studio phân cảnh**, bấm **Upload reference** ngay ở đầu trang. Đặt tên ảnh/hồ sơ đúng nhân vật, ví dụ `ELENA`, `HUGO`, `BLOODSTONE EGG`. Bấm `…` để sửa mô tả, loại và **tên gọi khác** (phân cách bằng dấu phẩy).
+2. Đánh dấu **Dùng chung toàn phim** cho reference cần kế thừa xuống mọi shot (ví dụ phong cách).
+3. Dán kịch bản vào ô cùng tab, hoặc nhập TXT/MD. Bấm **Chia cảnh, shot & gán reference**.
+4. Duyệt cây **cảnh → các shot** và thumbnail reference gợi ý. Ghi chú trước cảnh đầu thành hồ sơ chung. Chọn thêm cảnh mới hoặc thay danh sách cũ, giữ file media.
+5. Mỗi card lớn là một cảnh. Bên trong là `C001-S001`, `C001-S002`… Cảnh kế tiếp bắt đầu `C002-S001`. Mốc `0–2 giây`, `2–4 giây`, `4–6 giây`, `6–8 giây` là bốn shot **trong một cảnh 8 giây**.
+6. **Reference chung của cảnh** áp dụng xuống các shot. Dưới prompt từng shot có thumbnail và `+` để chọn hoặc upload thêm; bấm `×` trên ảnh để bỏ riêng ở shot đó. Những shot chưa gán reference được đánh dấu để kiểm tra. Gợi ý theo tên/tên gọi khác là đối chiếu văn bản, không phải nhận diện nội dung ảnh bằng AI.
+7. Chọn tài khoản và loại tạo ảnh/video. Có nút tạo từng shot, toàn bộ shot của một cảnh hoặc toàn dự án. Hàng đợi Muse vẫn thử nghiệm, chạy tuần tự và không tự gửi lại khi kết quả chưa rõ.
+8. Nút mũi tên thay thứ tự cảnh hoặc shot trong cảnh. Mã hiển thị, thứ tự dựng/phụ đề và tên file tải về tự cập nhật, ID/reference/kết quả vẫn gắn đúng shot. Trong **Chi tiết shot** có thể chuyển shot sang cảnh khác.
+9. **Tải kết quả đã chọn** trên desktop tạo một thư mục mới, chia `C001/`, `C002/`… chứa file `C001-S001-image.png`, `C001-S001-video.mp4` (đuôi theo file thực tế). Nút tải ở từng shot cũng đặt tên theo mã hiện tại. Media gốc trong dự án giữ tên UUID để không bị mất liên kết khi đổi thứ tự.
+
+Ví dụ:
+
+```text
+CẢNH 1 — Truy đuổi trong mưa
+0–2 giây — ELENA chạy về phía máy quay.
+2–4 giây — Góc thấp phía sau, lính truy đuổi.
+4–6 giây — ELENA tránh chiếc xe hàng, giữ BLOODSTONE EGG.
+6–8 giây — HUGO xuất hiện trên lưng ngựa.
+
+CẢNH 2 — Cánh cửa
+0–3 giây — ELENA mở cánh cửa gỗ.
+```
+
+**Dự án cũ:** mở `project.sogit.json` như trước. Các card cũ được tổ chức thành cảnh/shot mà không đổi ID, ảnh/video hay reference đã chọn. Bản gốc được sao lưu một lần tại `.sogit/project-before-v0.3.json`. Dự án trình duyệt có bản metadata trước chuyển đổi trong IndexedDB. Không dùng lại bản ứng dụng cũ để chỉnh dự án đã nâng cấp. Nếu muốn phân tích lại kịch bản cũ thành nhiều shot, dùng nút chia ở Studio và chọn thay danh sách; file media vẫn nằm trong thư viện nhưng cần gán lại cho những shot mới.
 
 ## Dùng trên Windows
 
-Tải gói Windows tại **[GitHub Releases](https://github.com/lsmedia2105/SogiT-mose-Ai/releases/latest)**. Chọn `SogiT Studio-0.2.0-win.zip` trong **Assets**. Nếu bản Release chưa xuất hiện, xem tiến độ ở **[Actions](https://github.com/lsmedia2105/SogiT-mose-Ai/actions/workflows/windows-release.yml)**. Workflow chạy khi đẩy tag `v*`, kiểm thử core trên Linux rồi build Windows và đăng ZIP lên Release; có thể chạy lại thủ công theo tag.
+Tải gói Windows tại **[GitHub Releases](https://github.com/lsmedia2105/SogiT-mose-Ai/releases/latest)**. Chọn `SogiT Studio-0.3.0-win.zip` trong **Assets**. Nếu bản Release chưa xuất hiện, xem tiến độ ở **[Actions](https://github.com/lsmedia2105/SogiT-mose-Ai/actions/workflows/windows-release.yml)**. Workflow chạy khi đẩy tag `v*`, kiểm thử core trên Linux rồi build Windows và đăng ZIP lên Release; có thể chạy lại thủ công theo tag.
 
-Gói thử nghiệm: `release/SogiT Studio-0.2.0-win.zip`. Giải nén **toàn bộ** rồi chạy `SogiT Studio.exe`; không chạy executable bên trong ZIP. Không cần Node.js để dùng gói này. Windows 10/11 64-bit; không bắt buộc NVIDIA cho quản lý dự án và thao tác cloud. Gói chưa ký số và chưa được thử trên máy Windows thực.
+Gói thử nghiệm: `release/SogiT Studio-0.3.0-win.zip`. Giải nén **toàn bộ** rồi chạy `SogiT Studio.exe`; không chạy executable bên trong ZIP. Không cần Node.js để dùng gói này. Windows 10/11 64-bit; không bắt buộc NVIDIA cho quản lý dự án và thao tác cloud. Gói chưa ký số và chưa được thử trên máy Windows thực.
 
 1. Tạo dự án, chọn thư mục lưu trên ổ có đủ dung lượng.
 2. Vào **Kịch bản & thế giới**, dán kịch bản hoặc nhập TXT/MD. Bấm **Tách & duyệt shot**: nhận diện `CẢNH n`, `SCENE n`, `SHOT n`, mốc thời gian; tách MASTER VISUAL LOCK thành ghi chú chung. Cảnh dài có thể chia theo thời lượng, cần duyệt lại hành động. Chọn thêm shot hoặc thay danh sách cũ; file media được giữ. Muốn AI chia shot, chọn tài khoản và bấm **Muse chia shot**; kết quả cũng phải duyệt trước khi thêm.
@@ -118,7 +145,7 @@ Các file đóng gói nằm trong `release/` (gitignored). Build NSIS trên Wind
 ## Tình trạng xác minh
 
 - TypeScript + Vite production build: đạt.
-- 23 kiểm thử domain, lưu/mở dự án, đường dẫn, API compatible mock và FFmpeg thực: đạt.
+- 28 kiểm thử domain, lưu/mở dự án, đường dẫn, API compatible mock và FFmpeg thực: đạt.
 - Kiểm thử UI Chromium: tạo dự án, nhập kịch bản, gán/khóa reference, tạo prompt, lưu/mở lại cả ảnh, thêm tên tài khoản và xuất SRT: đạt.
 - Desktop Electron trên Linux, giao diện build từ file, IPC, media protocol, phiên tài khoản tách biệt với trang giả lập và xuất FFmpeg: đạt.
 - Tự động hóa Muse trên trang giả lập qua Electron: kiểm tra bản nháp, gắn file reference, click gửi, lấy ảnh/video mới, bảo vệ kết quả trước autosave cũ, nhận kịch bản, dừng hàng đợi không gửi lại: đạt.

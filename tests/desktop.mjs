@@ -20,6 +20,7 @@ try{
   await app.evaluate(({dialog},files)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:files});},[source,image]);
   const assets=await page.evaluate(()=>window.studio.importAssets());assert.equal(assets.length,2);
   const project=created.project;project.assets=assets;project.scenes=[{id:crypto.randomUUID(),title:'Cảnh 1',description:'Biển xanh',prompt:'Test',duration:1,shot:'Toàn cảnh',camera:'Máy tĩnh',emotion:'',dialogue:'',narration:'Bình minh.',referenceIds:[],accountId:'',status:'approved',versions:[{id:'v1',assetId:assets[0].id,createdAt:new Date().toISOString()}],selectedVersionId:'v1',narrationAssetId:'',dialogueAssetId:''}];
+  project.scenes[0].imageVersions=[assets[1].id];project.scenes[0].selectedImageAssetId=assets[1].id;
   await page.evaluate(p=>window.studio.saveProject(p),project);
   await fs.rm(source);await fs.rm(image);
   await app.evaluate(({dialog},file)=>{dialog.showOpenDialog=async()=>({canceled:false,filePaths:[file]});},path.join(created.root,'project.sogit.json'));
@@ -35,9 +36,14 @@ try{
   assert.equal(sessions.windows.length,3);const partitions=sessions.windows.map(w=>w.storage).filter(p=>p?.includes('muse-'));assert.equal(new Set(partitions).size,2);assert.equal(sessions.clipboard,'second prompt');assert.ok(sessions.windows.every(w=>w.node===false&&w.sandbox===true));
   await page.evaluate(id=>window.studio.removeAccount(id),accounts[0].id);
   assert.equal((await page.evaluate(()=>window.studio.bootstrap())).accounts.length,1);
+  const exportedImage=path.join(root,'C001-S001-image.png');
+  await app.evaluate(({dialog},file)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:file});},exportedImage);
+  assert.equal(await page.evaluate(({p,id})=>window.studio.exportShotMedia(p,p.scenes[0].id,id),{p:project,id:assets[1].id}),true);
+  assert.deepEqual(await fs.readFile(exportedImage),await fs.readFile(path.join(created.root,assets[1].path)));
+  await app.evaluate(({dialog},file)=>{dialog.showSaveDialog=async()=>({canceled:false,filePath:file});},output);
   await page.evaluate(p=>window.studio.startRender(p,{resolution:'720p'}),project);
   await page.waitForFunction(()=>document.querySelector('.job-info strong')?.textContent==='Đã xuất video',{},{timeout:30000});
   const info=await probeMedia({},output);assert.equal(info.streams[0].width,1280);assert.ok(Math.abs(Number(info.format.duration)-1)<0.2);
   assert.deepEqual(errors,[]);
-  console.log('PASS: built desktop UI, preload IPC, hardware/tools, native folder project save/reopen, imported source independence, custom media protocol, isolated account windows + clipboard + removal (stub page), real FFmpeg export through IPC.');
+  console.log('PASS: built desktop UI, preload IPC, hardware/tools, native folder project save/reopen, imported source independence, custom media protocol, isolated account windows + clipboard + removal (stub page), numbered shot media download and real FFmpeg export through IPC.');
 }finally{await app.close();await fs.rm(root,{recursive:true,force:true});}

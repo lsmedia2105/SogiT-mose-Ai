@@ -1,7 +1,8 @@
 export type Asset = { id:string; name:string; path:string; type:'image'|'video'|'audio'; createdAt:string; url?:string };
-export type Reference = { id:string; name:string; kind:string; description:string; assetId:string; locked:boolean; imageAssetIds?:string[] };
-export type Scene = { id:string; title:string; description:string; prompt:string; duration:number; shot:string; camera:string; emotion:string; dialogue:string; narration:string; referenceIds:string[]; accountId:string; status:string; versions:{id:string;assetId:string;createdAt:string}[]; selectedVersionId:string; narrationAssetId:string; dialogueAssetId:string; imageVersions?:string[]; selectedImageAssetId?:string; imagePrompt?:string; parentScene?:string };
-export type Project = { schemaVersion:number; id:string; name:string; createdAt:string; updatedAt:string; genre:string; ratio:string; fps:number; style:string; story:string; bible:string; narratorVoice:string; references:Reference[]; scenes:Scene[]; assets:Asset[]; musicAssetId:string; musicVolume:number; logs:unknown[] };
+export type Reference = { id:string; name:string; kind:string; description:string; assetId:string; locked:boolean; imageAssetIds?:string[]; aliases?:string[]; applyToAll?:boolean };
+export type Scene = { id:string; title:string; description:string; prompt:string; duration:number; shot:string; camera:string; emotion:string; dialogue:string; narration:string; referenceIds:string[]; accountId:string; status:string; versions:{id:string;assetId:string;createdAt:string}[]; selectedVersionId:string; narrationAssetId:string; dialogueAssetId:string; imageVersions?:string[]; selectedImageAssetId?:string; imagePrompt?:string; parentScene?:string; groupId?:string; excludedReferenceIds?:string[]; refAssignment?:string };
+export type SceneGroup = {id:string;title:string;description:string;referenceIds:string[]};
+export type Project = { schemaVersion:number; structureVersion?:number; sceneGroups?:SceneGroup[]; id:string; name:string; createdAt:string; updatedAt:string; genre:string; ratio:string; fps:number; style:string; story:string; bible:string; narratorVoice:string; references:Reference[]; scenes:Scene[]; assets:Asset[]; musicAssetId:string; musicVolume:number; logs:unknown[] };
 export type Account = { id:string; name:string; createdAt:string };
 export type Settings = { profile:string; ffmpegPath:string; ffprobePath:string; realesrganPath:string; realesrganModelDir:string; baseUrl:string; textModel:string; hasApiKey:boolean; apiKey?:string; clearApiKey?:boolean; museComposer?:string; museSend?:string; museResult?:string; museFile?:string; museTimeout?:number };
 export type Bootstrap = { desktop:boolean; settings:Settings; accounts:Account[]; recent:{name:string;path:string}[]; hardware:{memoryGB:number;cpus:number;platform:string;gpus:string[]}; tools:{ffmpeg:string|null;ffprobe:string|null} };
@@ -29,6 +30,8 @@ export interface StudioAPI {
   generateText(args:{task:string;project:Project;sceneId?:string}):Promise<string>;
   exportPrompts(p:Project):Promise<boolean>;
   exportSrt(p:Project):Promise<boolean>;
+  exportShotMedia(p:Project,shotId:string,assetId:string):Promise<boolean>;
+  exportAllShotMedia(p:Project):Promise<boolean>;
   startRender(p:Project,options:{resolution:string}):Promise<{id:string}|null>;
   startUpscale(p:Project,options:{resolution:string;assetId:string;engine:string}):Promise<{id:string}|null>;
   cancelJob():Promise<boolean>;

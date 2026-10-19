@@ -1,15 +1,15 @@
-Bản 0.2.0 bổ sung **tạo ảnh trực tiếp từ từng shot và hàng đợi Muse**.
+**SogiT Studio v0.3.0 — một cảnh chứa nhiều shot, reference ngay trong Studio.**
 
-Tải `SogiT Studio-0.2.0-win.zip` trong Assets, giải nén toàn bộ và chạy `SogiT Studio.exe`. Thoát bản cũ trước khi mở bản mới. Dự án cũ dùng lại được qua `project.sogit.json`.
+Tải `SogiT Studio-0.3.0-win.zip`, giải nén toàn bộ, thoát bản cũ rồi chạy `SogiT Studio.exe`.
 
-- Nhập CẢNH/SCENE/SHOT, mốc thời gian, TXT/MD; tách ghi chú MASTER VISUAL LOCK; duyệt trước khi thêm hoặc thay danh sách shot.
-- Muse chia shot qua phiên đăng nhập. Tạo ảnh từng shot/hàng loạt; tạo reference; gắn ảnh tham chiếu và tự lưu kết quả về dự án khi giao diện tương thích.
-- Tạo video từng shot từ prompt/storyboard; MP4/WebM trực tiếp mới hỗ trợ tải tự động, blob/HLS cần tải thủ công.
-- Nhật ký lưu trên ổ, một tác vụ mỗi lần, không tự gửi lại khi chưa rõ kết quả. Dừng chờ trong tool không hủy xử lý bên Muse.
-- Có Báo cáo kết nối để chẩn đoán bộ nhận diện; không lấy nội dung chat, cookie, mật khẩu hoặc token.
+- Upload reference và nhập kịch bản trong cùng tab Studio.
+- Một cảnh có nhiều shot: 0–2, 2–4, 4–6, 6–8 giây thành bốn shot trong một cảnh 8 giây.
+- Tự đánh mã C001-S001, C001-S002…; cảnh tiếp theo C002-S001.
+- Gợi ý reference theo tên/tên gọi khác; reference chung toàn phim, chung cảnh và riêng shot. Thumbnail có nút thêm/upload và bỏ ở từng shot.
+- Card lớn theo cảnh, prompt/tài khoản/kết quả/nút tạo cho từng shot; tạo cả cảnh hoặc toàn dự án.
+- Đổi thứ tự vẫn giữ ID/media/reference. Tải file có mã cảnh-shot; xuất phim và SRT theo đúng thứ tự.
+- Mở dự án cũ và sao lưu bản gốc trước nâng cấp; giữ kết quả/reference đã chọn.
 
-**Tự động hóa Muse đang thử nghiệm:** đã test bằng trang giả lập trong Electron, chưa kiểm chứng phiên Muse thật của người dùng. Nếu Muse đổi DOM/model, có thể cần cập nhật bộ nhận diện. Thử một shot trước. Không hứa mọi tài khoản/model hoạt động ngay.
+Build, 28 kiểm thử core, giao diện và desktop được kiểm tra. Tự động hóa Muse vẫn thử nghiệm: kiểm thử bằng trang giả lập, chưa xác minh phiên Muse thật của người dùng. Nếu lỗi nhận diện, xuất Báo cáo kết nối. Không tự gửi lại sau trạng thái chưa rõ; dừng chờ không hủy yêu cầu bên Muse.
 
-Windows 10/11 x64; gói chưa ký số. Không cần Node.js. FFmpeg/FFprobe cần cài riêng để ghép/xuất phim. Chưa có TTS/lip-sync tự động; không xóa watermark nguồn. AI upscale Real-ESRGAN cần GPU/models riêng, chưa kiểm thử GPU thực.
-
-Xem README trong repository để dùng chi tiết. SHA256SUMS.txt dùng kiểm tra file tải xuống.
+Windows 10/11 x64, gói chưa ký số. FFmpeg/FFprobe cần cài riêng để dựng/xuất. Không xóa watermark nguồn; chưa có TTS/lip-sync tự động. Xem README để dùng chi tiết.

@@ -1,24 +1,21 @@
-SOGIT STUDIO 0.2.0 — WINDOWS PREVIEW
+SOGIT STUDIO 0.3.0 — CANH > SHOT, REFERENCE NGAY TRONG STUDIO
 
 Thoat ban cu. Giai nen toan bo ZIP va chay SogiT Studio.exe.
-Mo lai project.sogit.json neu da co du an; khong can xoa du lieu dang nhap.
+Mo du an cu bang project.sogit.json; khong xoa du lieu tai khoan.
 
-1. Tai khoan AI: mo Muse va dang nhap. De o Message trong.
-2. Kich ban & the gioi: dan kich ban/TXT/MD, bam Tach & duyet shot.
-   Hoac chon tai khoan va bam Muse chia shot. Duyet danh sach truoc khi ap dung.
-3. Tao reference, gan reference cho tung shot.
-4. Studio: chon tai khoan, Kiem tra Muse, thu Tao anh shot voi 1 shot.
-5. Neu thanh cong, dung Tao anh N shot de chay tuan tu. Anh tu luu ve du an.
-6. Chi tiet shot co anh storyboard, Tao video Muse, duyet video va gan am thanh.
-7. Cai FFmpeg/FFprobe trong Cai dat de ghep/xuat phim.
+1. Studio > Upload reference. Dat ten: ELENA, HUGO... nut ... de them ten goi khac.
+2. Dan kich ban trong cung tab. Bam Chia canh, shot & gan reference.
+3. Duyet cay canh / shot va anh tham chieu truoc khi ap dung.
+4. Mot canh 8 giay co the gom 4 shot 2 giay: C001-S001 ... C001-S004.
+5. Chon reference chung cho canh, hoac them/bo reference ngay duoi prompt moi shot.
+6. Chon tai khoan, Kiem tra Muse, thu tao mot shot truoc khi tao ca canh/toan bo.
+7. Mui ten doi thu tu; ma shot va ten file tai ve tu cap nhat, media/ref giu nguyen.
+8. Tai ket qua da chon se chia thu muc C001, C002 va file C001-S001-image/video.
 
-TU DONG HOA MUSE DANG THU NGHIEM, chua xac minh phien Muse that cua ban.
-Neu khong nhan dien giao dien: Tai khoan AI > Bao cao ket noi.
-Bao cao khong lay noi dung chat, cookie, mat khau hoac token.
-Khong thao tac o Message khi tool dang chay.
-Dung cho trong tool KHONG huy yeu cau da gui ben Muse.
-Neu ket qua chua ro, kiem tra Muse truoc khi bam tao lai de tranh ton han muc.
-Chua co TTS/lip-sync tu dong. Khong xoa watermark tu nguon.
-Sao luu ca project.sogit.json VA thu muc assets (kem .sogit neu muon giu nhat ky).
+Du an cu duoc sao luu tai .sogit/project-before-v0.3.json truoc khi nang cap.
+Sao luu ca project.sogit.json + assets + .sogit.
+Can FFmpeg/FFprobe de ghep phim. Chua tu dong TTS/lip-sync hoac xoa watermark.
+Tu dong hoa Muse van thu nghiem; neu khong nhan dien giao dien, xuat Bao cao ket noi.
+Dung cho trong tool KHONG huy yeu cau da gui tren Muse. Kiem tra Muse truoc khi tao lai.
 
-Huong dan day du: README.md tai GitHub repository.
+Huong dan co dau day du: README.md tren GitHub.
